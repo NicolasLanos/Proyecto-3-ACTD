@@ -148,8 +148,6 @@ train.loc[train['Puntaje'] < 359, 'Puntaje'] = 0
 train.loc[train['Puntaje'] >= 359, 'Puntaje'] = 1
 
 
-train.loc[train['Puntaje'] < 359, 'Puntaje'] = 0
-train.loc[train['Puntaje'] >= 359, 'Puntaje'] = 1
 
 
 
@@ -208,27 +206,11 @@ edges = [('Cuartos', 'Conviven'), ('Madre', 'Padre'), ('Madre', 'Puntaje'), ('Ma
 ###################################################################################################################
 
 def bayesian_inference(Genero, Cuartos, Madre, Padre, Estrato, Conviven, Carro, Computador, Internet, Lavadora):
-    
-    # Creamos el modelo bayesiano
-    modelHill = BayesianNetwork([('Cuartos', 'Conviven'), ('Madre', 'Padre'), ('Madre', 'Puntaje'), ('Madre', 'Genero'), ('Padre', 'Estrato'), ('Estrato', 'Internet'), ('Computador', 'Carro'), ('Internet', 'Computador'), ('Internet', 'Lavadora'), ('Lavadora', 'Cuartos')])
-
-
-    # Estimamos las distribuciones de probabilidad usando MLE
-    modelHill.fit(df, estimator=MaximumLikelihoodEstimator)
-
-    # Estimamos las distribuciones de probabilidad usando MLE y BayesianEstimator
-    modelHill.fit(df, estimator=BayesianEstimator, prior_type='BDeu', equivalent_sample_size=10)
-
-    # Hacemos inferencias en el modelo bayesiano
-
+    modelHill = BayesianNetwork(edges)
+    modelHill.fit(train, estimator=MaximumLikelihoodEstimator)
     infer = VariableElimination(modelHill)
-
-
     evidence = {'Genero': Genero, 'Cuartos': Cuartos, 'Madre': Madre, 'Padre': Padre, 'Estrato': Estrato, 'Conviven': Conviven, 'Carro': Carro, 'Computador': Computador,'Internet':Internet,'Lavadora':Lavadora}
-    
-    
     q = infer.query(['Puntaje'], evidence=evidence)
-
     return q
 
 ##############################################################################################################
@@ -251,39 +233,26 @@ def bayesian_inference(Genero, Cuartos, Madre, Padre, Estrato, Conviven, Carro, 
 
 
 
+# Define the Bayesian inference function
+def bayesian_inference(Genero, Cuartos, Madre, Padre, Estrato, Conviven, Carro, Computador, Internet, Lavadora):
+    modelHill = BayesianNetwork(edges)
+    modelHill.fit(train, estimator=MaximumLikelihoodEstimator)
+    infer = VariableElimination(modelHill)
+    evidence = {'Genero': Genero, 'Cuartos': Cuartos, 'Madre': Madre, 'Padre': Padre, 'Estrato': Estrato,
+                'Conviven': Conviven, 'Carro': Carro, 'Computador': Computador, 'Internet': Internet,
+                'Lavadora': Lavadora}
+    q = infer.query(['Puntaje'], evidence=evidence)
+    return q
 
-
-# Crea la aplicación Dash
+# Create the Dash application
 app = dash.Dash(__name__)
 
-
-
-# LAYOUT DE LA APLICACION ######################################################################################################
-
-
+# Define the layout of the application
 app.layout = html.Div([
     html.H1('Aplicación de Inferencia Bayesiana'),
     dcc.Tabs([
         dcc.Tab(label='Tab 1', children=[
-########################VISUALIZACIONES
-########################VISUALIZACIONES
-########################VISUALIZACIONES
-########################VISUALIZACIONES
-########################VISUALIZACIONES
-########################VISUALIZACIONES
-########################VISUALIZACIONES
-########################VISUALIZACIONES
-########################VISUALIZACIONES
-########################VISUALIZACIONES
-########################VISUALIZACIONES
-########################VISUALIZACIONES
-########################VISUALIZACIONES
-########################VISUALIZACIONES
-########################VISUALIZACIONES
-########################VISUALIZACIONES
-########################VISUALIZACIONES
-########################VISUALIZACIONES
-########################VISUALIZACIONES
+            # Add your visualization components here
         ]),
         dcc.Tab(label='Tab 2', children=[
             html.Div([
@@ -301,36 +270,27 @@ app.layout = html.Div([
                 html.Button('Calcular', id='calcular-button'),
                 html.Div(id='output')
             ])
-            
         ])
     ])
 ])
 
 
+@app.callback(Output('output', 'children'),
+              [Input('calcular-button', 'n_clicks')],
+              [State('genero-input', 'value'),
+               State('cuartos-input', 'value'),
+               State('madre-input', 'value'),
+               State('padre-input', 'value'),
+               State('estrato-input', 'value'),
+               State('conviven-input', 'value'),
+               State('carro-input', 'value'),
+               State('computador-input', 'value'),
+               State('internet-input', 'value'),
+               State('lavadora-input', 'value')])
+def calculate_inference(n_clicks, genero, cuartos, madre, padre, estrato, conviven, carro, computador, internet, lavadora):
+    result = bayesian_inference(genero, cuartos, madre, padre, estrato, conviven, carro, computador, internet, lavadora)
+    return f"The probability of Puntaje = 1 given the evidence is: {result['Puntaje'][1]}"
 
 
-
-# Define la función de callback para manejar la interacción del usuario
-@app.callback(
-    Output('output', 'children'),
-    [Input('calcular-button', 'n_clicks')],
-    [dash.dependencies.State('genero-input', 'value'),
-     dash.dependencies.State('cuartos-input', 'value'),
-     dash.dependencies.State('madre-input', 'value'),
-     dash.dependencies.State('padre-input', 'value'),
-     dash.dependencies.State('estrato-input', 'value'),
-     dash.dependencies.State('conviven-input', 'value'),
-     dash.dependencies.State('carro-input', 'value'),
-     dash.dependencies.State('computador-input', 'value'),
-     dash.dependencies.State('internet-input', 'value'),
-     dash.dependencies.State('lavadora-input', 'value')]
-)
-def update_output(n_clicks, genero, cuartos, madre, padre, estrato, conviven, carro, computador, internet, lavadora):
-    if n_clicks is not None:
-        result = bayesian_inference(genero, cuartos, madre, padre, estrato, conviven, carro, computador, internet, lavadora)
-        return html.H3(f'Resultado: {result}')
-
-# Ejecuta la aplicación Dash
 if __name__ == '__main__':
     app.run_server(debug=True)
-
